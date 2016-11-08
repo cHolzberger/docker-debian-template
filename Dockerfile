@@ -1,15 +1,29 @@
-FROM mosaiksoftware/debian
-#
-# PHP Farm Docker image
-#
+FROM debian:jessie
+MAINTAINER  Chrisitan Holzberger <ch@mosaiksoftware.de>
+ENV PATH /usr/local/go/bin:$PATH
+##### PACKAGE INSTALLATION #####
+COPY tools /bin/
 
-MAINTAINER Christian Holzberger, ch@mosaiksoftware.de
+COPY selections /selections
+COPY tools/runlevel /sbin/runlevel
+ENV GOPATH /usr/src/confd
+ENV GOBIN /usr/src/confd/bin
+ENV TEST "mosaiksoftware/debian"
+# Custom Builds
 
 COPY config /etc
-COPY selections /selections
 
-# run it
-COPY run.sh /run.sh
+# make use of docker caching
 
-ENTRYPOINT [ "/bin/dinit","-r","/bin/docker-entrypoint" ]
-CMD ["bash","/run.sh"]
+RUN chmod a+x /bin/run-build 
+
+COPY build.d/ /build/
+RUN run-build /build/
+
+##### START CUSTOM SCRIPT####
+ONBUILD COPY selections /selections
+ONBUILD COPY config /etc
+ONBUILD COPY build.d /build
+ONBUILD RUN run-build /build
+ENTRYPOINT [ "/bin/docker-entrypoint" ]
+CMD  dpkg --get-selections
